@@ -16,15 +16,31 @@ function CourseList() {
 
   const studentId = 1; // temporary fixed student id
 
+  // ================= LOAD COURSES =================
   const loadCourses = async () => {
     try {
       setLoading(true);
+      setError("");
+
       const res = await fetch(`${API_BASE}/api/courses`);
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch courses");
+      }
+
       const data = await res.json();
-      setCourses(data);
+
+      // 🔐 SAFETY CHECK
+      if (Array.isArray(data)) {
+        setCourses(data);
+      } else {
+        console.error("API did not return array:", data);
+        setCourses([]);
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to load courses");
+      setCourses([]); // prevent crash
     } finally {
       setLoading(false);
     }
@@ -34,6 +50,7 @@ function CourseList() {
     loadCourses();
   }, []);
 
+  // ================= ENROLL =================
   const handleEnroll = async (courseId) => {
     try {
       const res = await fetch(`${API_BASE}/api/enrollments`, {
@@ -49,16 +66,15 @@ function CourseList() {
         throw new Error("Enroll failed");
       }
 
-      await loadCourses(); // refresh counts
+      await loadCourses();
       alert("Enrolled successfully!");
     } catch (err) {
       console.error(err);
-      alert("Could not enroll. See console.");
+      alert("Could not enroll");
     }
   };
 
-  // ---------- CREATE NEW COURSE ----------
-
+  // ================= CREATE COURSE =================
   const handleCreateCourse = async () => {
     if (!newName.trim()) {
       alert("Course name required");
@@ -90,8 +106,7 @@ function CourseList() {
     }
   };
 
-  // ---------- EDIT HANDLERS ----------
-
+  // ================= EDIT =================
   const startEdit = (course) => {
     setEditingCourse(course);
     setEditName(course.name);
@@ -131,70 +146,72 @@ function CourseList() {
     }
   };
 
-  // ---------- RENDER ----------
-
+  // ================= RENDER =================
   if (loading) return <p>Loading courses...</p>;
   if (error) return <p style={{ color: "red" }}>{error}</p>;
 
   return (
     <div>
       <h2>Create New Course</h2>
+
       <div style={{ marginBottom: "1rem" }}>
-        <div style={{ marginBottom: "0.25rem" }}>
+        <div>
           Name:{" "}
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
           />
         </div>
-        <div style={{ marginBottom: "0.25rem" }}>
+
+        <div>
           Description:{" "}
           <input
             value={newDescription}
             onChange={(e) => setNewDescription(e.target.value)}
           />
         </div>
+
         <button onClick={handleCreateCourse}>Add Course</button>
       </div>
 
       <h2>Available Courses</h2>
+
       {courses.length === 0 && <p>No courses found.</p>}
 
       <ul>
-        {courses.map((c) => (
-          <li key={c.id} style={{ marginBottom: "0.75rem" }}>
-            {/* View mode */}
-            {(!editingCourse || editingCourse.id !== c.id) && (
-              <>
-                – {c.name} (Enrolled: {c.enrolledCount ?? 0}){" "}
-                <button onClick={() => handleEnroll(c.id)}>Enroll</button>{" "}
-                <button onClick={() => startEdit(c)}>Edit</button>
-              </>
-            )}
-
-            {/* Edit mode */}
-            {editingCourse && editingCourse.id === c.id && (
-              <div style={{ marginTop: "0.5rem" }}>
-                <div style={{ marginBottom: "0.25rem" }}>
-                  Name:{" "}
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                  />
+        {Array.isArray(courses) &&
+          courses.map((c) => (
+            <li key={c.id} style={{ marginBottom: "0.75rem" }}>
+              {!editingCourse || editingCourse.id !== c.id ? (
+                <>
+                  {c.name} (Enrolled: {c.enrolledCount ?? 0}){" "}
+                  <button onClick={() => handleEnroll(c.id)}>Enroll</button>{" "}
+                  <button onClick={() => startEdit(c)}>Edit</button>
+                </>
+              ) : (
+                <div>
+                  <div>
+                    Name:{" "}
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    Description:{" "}
+                    <input
+                      value={editDescription}
+                      onChange={(e) =>
+                        setEditDescription(e.target.value)
+                      }
+                    />
+                  </div>
+                  <button onClick={saveEdit}>Save</button>{" "}
+                  <button onClick={cancelEdit}>Cancel</button>
                 </div>
-                <div style={{ marginBottom: "0.25rem" }}>
-                  Description:{" "}
-                  <input
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                  />
-                </div>
-                <button onClick={saveEdit}>Save</button>{" "}
-                <button onClick={cancelEdit}>Cancel</button>
-              </div>
-            )}
-          </li>
-        ))}
+              )}
+            </li>
+          ))}
       </ul>
     </div>
   );
