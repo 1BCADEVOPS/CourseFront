@@ -13,7 +13,8 @@ jobs:
     name: SonarCloud Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
@@ -24,10 +25,10 @@ jobs:
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # Make sure this secret exists
         with:
           args: >
-            -Dsonar.organization=hemavathy-p
+            -Dsonar.organization=hemavathypandiarajan
             -Dsonar.projectKey=Hemavathypandiarajan_CourseFront
             -Dsonar.projectName=CourseFront
             -Dsonar.sourceEncoding=UTF-8
