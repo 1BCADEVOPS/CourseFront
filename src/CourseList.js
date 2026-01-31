@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = process.env.REACT_APP_API_URL;
 
 function CourseList() {
   const [courses, setCourses] = useState([]);
