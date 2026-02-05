@@ -3,18 +3,11 @@ import React, { useEffect, useState } from "react";
 const API_BASE = process.env.REACT_APP_API_URL;
 
 function CourseList() {
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [courses, setCourses] = useState([]);   // MUST be array
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [editingCourse, setEditingCourse] = useState(null);
-  const [editName, setEditName] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-
-  const [newName, setNewName] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-
-  const studentId = 1; // temporary fixed student id
+  const studentId = 1;
 
   // ================= LOAD COURSES =================
   const loadCourses = async () => {
@@ -25,18 +18,20 @@ function CourseList() {
       const res = await fetch(`${API_BASE}/api/courses`);
 
       if (!res.ok) {
-        throw new Error("Failed to fetch courses");
+        throw new Error("API error");
       }
 
       const data = await res.json();
+      console.log("API RESPONSE =", data);
 
-      // 🔐 SAFETY CHECK
+      // 🔐 SAFETY CHECK (MOST IMPORTANT)
       if (Array.isArray(data)) {
         setCourses(data);
       } else {
-        console.error("API did not return array:", data);
         setCourses([]);
+        setError("Invalid data from server");
       }
+
     } catch (err) {
       console.error(err);
       setError("Failed to load courses");
@@ -57,24 +52,26 @@ function CourseList() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          courseId: courseId,
-          studentId: studentId,
+          courseId,
+          studentId,
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Enroll failed");
-      }
+      if (!res.ok) throw new Error("Enroll failed");
 
-      await loadCourses();
-      alert("Enrolled successfully!");
+      alert("Enrolled successfully");
+      
+      window.location.reload();
     } catch (err) {
       console.error(err);
-      alert("Could not enroll");
+      alert("Enroll failed");
     }
   };
 
   // ================= CREATE COURSE =================
+  const [newName, setNewName] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+
   const handleCreateCourse = async () => {
     if (!newName.trim()) {
       alert("Course name required");
@@ -92,61 +89,18 @@ function CourseList() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("Create failed");
-      }
+      if (!res.ok) throw new Error("Create failed");
 
       setNewName("");
       setNewDescription("");
-      await loadCourses();
-      alert("Course created");
+      loadCourses();
     } catch (err) {
       console.error(err);
-      alert("Could not create course");
+      alert("Create failed");
     }
   };
 
-  // ================= EDIT =================
-  const startEdit = (course) => {
-    setEditingCourse(course);
-    setEditName(course.name);
-    setEditDescription(course.description || "");
-  };
-
-  const cancelEdit = () => {
-    setEditingCourse(null);
-    setEditName("");
-    setEditDescription("");
-  };
-
-  const saveEdit = async () => {
-    if (!editingCourse) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/api/courses/${editingCourse.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editName,
-          description: editDescription,
-          enrolledCount: editingCourse.enrolledCount,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Update failed");
-      }
-
-      await loadCourses();
-      cancelEdit();
-      alert("Course updated");
-    } catch (err) {
-      console.error(err);
-      alert("Could not update course");
-    }
-  };
-
-  // ================= RENDER =================
+  // ================= UI =================
   if (loading) return <p>Loading courses...</p>;
   if (error) return <p style={{ color: "red" }}>{error}</p>;
 
@@ -154,64 +108,33 @@ function CourseList() {
     <div>
       <h2>Create New Course</h2>
 
-      <div style={{ marginBottom: "1rem" }}>
-        <div>
-          Name:{" "}
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-          />
-        </div>
+      <input
+        placeholder="Course name"
+        value={newName}
+        onChange={(e) => setNewName(e.target.value)}
+      />
+      <br />
 
-        <div>
-          Description:{" "}
-          <input
-            value={newDescription}
-            onChange={(e) => setNewDescription(e.target.value)}
-          />
-        </div>
+      <input
+        placeholder="Description"
+        value={newDescription}
+        onChange={(e) => setNewDescription(e.target.value)}
+      />
+      <br />
 
-        <button onClick={handleCreateCourse}>Add Course</button>
-      </div>
+      <button onClick={handleCreateCourse}>Add Course</button>
 
       <h2>Available Courses</h2>
 
       {courses.length === 0 && <p>No courses found.</p>}
 
       <ul>
-        {Array.isArray(courses) &&
-          courses.map((c) => (
-            <li key={c.id} style={{ marginBottom: "0.75rem" }}>
-              {!editingCourse || editingCourse.id !== c.id ? (
-                <>
-                  {c.name} (Enrolled: {c.enrolledCount ?? 0}){" "}
-                  <button onClick={() => handleEnroll(c.id)}>Enroll</button>{" "}
-                  <button onClick={() => startEdit(c)}>Edit</button>
-                </>
-              ) : (
-                <div>
-                  <div>
-                    Name:{" "}
-                    <input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    Description:{" "}
-                    <input
-                      value={editDescription}
-                      onChange={(e) =>
-                        setEditDescription(e.target.value)
-                      }
-                    />
-                  </div>
-                  <button onClick={saveEdit}>Save</button>{" "}
-                  <button onClick={cancelEdit}>Cancel</button>
-                </div>
-              )}
-            </li>
-          ))}
+        {courses.map((c) => (
+          <li key={c.id}>
+            – {c.name} (Enrolled: {c.enrolledCount ?? 0}){" "}
+            <button onClick={() => handleEnroll(c.id)}>Enroll</button>
+          </li>
+        ))}
       </ul>
     </div>
   );
